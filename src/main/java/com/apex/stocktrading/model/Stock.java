@@ -1,4 +1,4 @@
-package com.codealpha.stocktrading.model;
+package com.apex.stocktrading.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

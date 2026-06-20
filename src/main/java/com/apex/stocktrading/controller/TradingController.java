@@ -1,11 +1,11 @@
-package com.codealpha.stocktrading.controller;
+package com.apex.stocktrading.controller;
 
-import com.codealpha.stocktrading.model.PortfolioHolding;
-import com.codealpha.stocktrading.model.Stock;
-import com.codealpha.stocktrading.model.TransactionLog;
-import com.codealpha.stocktrading.repository.PortfolioRepository;
-import com.codealpha.stocktrading.repository.StockRepository;
-import com.codealpha.stocktrading.repository.TransactionLogRepository;
+import com.apex.stocktrading.model.PortfolioHolding;
+import com.apex.stocktrading.model.Stock;
+import com.apex.stocktrading.model.TransactionLog;
+import com.apex.stocktrading.repository.PortfolioRepository;
+import com.apex.stocktrading.repository.StockRepository;
+import com.apex.stocktrading.repository.TransactionLogRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

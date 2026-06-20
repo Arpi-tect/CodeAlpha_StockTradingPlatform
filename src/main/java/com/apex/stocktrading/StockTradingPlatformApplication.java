@@ -1,4 +1,4 @@
-package com.codealpha.stocktrading;
+package com.apex.stocktrading;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

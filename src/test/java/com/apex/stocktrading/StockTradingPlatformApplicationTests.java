@@ -1,4 +1,4 @@
-package com.codealpha.stocktrading;
+package com.apex.stocktrading;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
