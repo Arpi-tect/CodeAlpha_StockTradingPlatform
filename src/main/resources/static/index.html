@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApexTrade - Real-Time Stock Portfolio Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & Babel CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <script>
+      Babel.registerPreset("custom-react", {
+        presets: [
+          [Babel.availablePresets["react"], { runtime: "classic" }]
+        ]
+      });
+    </script>
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at top right, #0b0f19 0%, #030712 100%);
+            color: #f3f4f6;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+        }
+        .glow-indigo {
+            text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen py-10 px-4">
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="custom-react">
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [stocks, setStocks] = useState([]);
+            const [portfolio, setPortfolio] = useState({ cash: 10000, holdingsValue: 0, portfolioValue: 10000, profitLoss: 0, profitLossPercent: 0, holdings: [] });
+            const [transactions, setTransactions] = useState([]);
+            const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
+            const [quantity, setQuantity] = useState('10');
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetchInitialData();
+
+                // Set up simulation polling every 2.5 seconds
+                const interval = setInterval(() => {
+                    simulateMarket();
+                }, 2500);
+
+                return () => clearInterval(interval);
+            }, []);
+
+            const fetchInitialData = async () => {
+                try {
+                    const stocksRes = await fetch('/api/trading/stocks');
+                    const stocksData = await stocksRes.json();
+                    setStocks(stocksData);
+                    if (stocksData.length > 0) {
+                        setSelectedSymbol(stocksData[0].symbol);
+                    }
+
+                    const portfolioRes = await fetch('/api/trading/portfolio');
+                    const portfolioData = await portfolioRes.json();
+                    setPortfolio(portfolioData);
+
+                    const transactionsRes = await fetch('/api/trading/transactions');
+                    const transactionsData = await transactionsRes.json();
+                    setTransactions(transactionsData);
+
+                    setLoading(false);
+                } catch (err) {
+                    console.error("Error fetching trading data:", err);
+                    setLoading(false);
+                }
+            };
+
+            const simulateMarket = async () => {
+                try {
+                    const res = await fetch('/api/trading/simulate', { method: 'POST' });
+                    const updatedStocks = await res.json();
+                    setStocks(updatedStocks);
+
+                    const portfolioRes = await fetch('/api/trading/portfolio');
+                    const portfolioData = await portfolioRes.json();
+                    setPortfolio(portfolioData);
+                } catch (err) {
+                    console.error("Error simulating market:", err);
+                }
+            };
+
+            const handleTrade = async (type) => {
+                if (!quantity.trim()) return;
+                const qty = parseInt(quantity);
+                if (isNaN(qty) || qty <= 0) {
+                    alert("Please enter a positive integer for quantity.");
+                    return;
+                }
+
+                try {
+                    const params = new URLSearchParams();
+                    params.append('symbol', selectedSymbol);
+                    params.append('quantity', qty);
+                    params.append('type', type);
+
+                    const res = await fetch(`/api/trading/trade?${params.toString()}`, {
+                        method: 'POST'
+                    });
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        alert(data.message);
+                        setQuantity('10');
+                        fetchInitialData();
+                    } else {
+                        alert(data.message);
+                    }
+                } catch (err) {
+                    console.error("Error executing trade:", err);
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="flex items-center justify-center min-h-screen">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="max-w-6xl mx-auto">
+                    {/* Header */}
+                    <div className="glass-panel rounded-3xl p-8 mb-8 text-center border-t border-indigo-500/20">
+                        <h1 className="text-3xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 mb-2">APEXTRADE TERMINAL</h1>
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Real-time Stock Trading Simulator</p>
+                    </div>
+
+                    {/* Balance Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center border-l-4 border-slate-600">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Available Cash</span>
+                            <span className="text-3xl font-extrabold text-slate-200">
+                                ${portfolio.cash ? portfolio.cash.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "0.00"}
+                            </span>
+                        </div>
+                        <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center border-l-4 border-indigo-500">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Portfolio Value</span>
+                            <span className="text-3xl font-extrabold text-indigo-400 glow-indigo">
+                                ${portfolio.portfolioValue ? portfolio.portfolioValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "0.00"}
+                            </span>
+                        </div>
+                        <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center border-l-4 border-emerald-500">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Net Profit / Loss</span>
+                            <span className={`text-2xl font-extrabold ${portfolio.profitLoss >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                {portfolio.profitLoss >= 0 ? "+" : ""}${portfolio.profitLoss ? portfolio.profitLoss.toFixed(2) : "0.00"}
+                            </span>
+                            <span className={`text-xs font-semibold mt-1 ${portfolio.profitLoss >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                                ({portfolio.profitLossPercent ? portfolio.profitLossPercent.toFixed(2) : "0.00"}%)
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Dashboard Columns */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                        {/* Market Prices (2 Cols) */}
+                        <div className="glass-panel rounded-2xl p-6 lg:col-span-2 border-t border-slate-800">
+                            <h2 className="text-lg font-bold text-indigo-300 mb-6 pb-2 border-b border-slate-800 flex justify-between items-center">
+                                <span>Live Stock Market Ticker</span>
+                                <span className="text-xs text-emerald-400 animate-pulse font-normal">Real-time simulation active</span>
+                            </h2>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="text-slate-400 font-semibold text-xs border-b border-slate-800/85 uppercase tracking-wider">
+                                            <th className="py-3 px-4">Symbol</th>
+                                            <th className="py-3 px-4">Company</th>
+                                            <th className="py-3 px-4 text-center">Price</th>
+                                            <th className="py-3 px-4 text-right">Day Change</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {stocks.map((stock) => (
+                                            <tr key={stock.symbol} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+                                                <td className="py-3.5 px-4 font-bold text-slate-200">{stock.symbol}</td>
+                                                <td className="py-3.5 px-4 text-slate-400 text-sm">{stock.name}</td>
+                                                <td className="py-3.5 px-4 text-center font-extrabold text-slate-300">${stock.price.toFixed(2)}</td>
+                                                <td className={`py-3.5 px-4 text-right font-bold ${stock.changePercent >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                                    {stock.changePercent >= 0 ? "+" : ""}{stock.changePercent.toFixed(2)}%
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Trade Actions (1 Col) */}
+                        <div className="glass-panel rounded-2xl p-6 border-t border-slate-800">
+                            <h2 className="text-lg font-bold text-indigo-300 mb-6 pb-2 border-b border-slate-800">Execute Order</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Select Asset</label>
+                                    <select 
+                                        value={selectedSymbol}
+                                        onChange={(e) => setSelectedSymbol(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-slate-900/60 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-200 font-bold"
+                                    >
+                                        {stocks.map(s => (
+                                            <option key={s.symbol} value={s.symbol} className="bg-slate-950">{s.symbol} - {s.name} (${s.price.toFixed(2)})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Quantity (Shares)</label>
+                                    <input 
+                                        type="number"
+                                        value={quantity}
+                                        onChange={(e) => setQuantity(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-slate-900/60 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-200"
+                                        min="1"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 pt-2">
+                                    <button 
+                                        onClick={() => handleTrade('BUY')}
+                                        className="py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition duration-200 shadow-lg shadow-emerald-600/20"
+                                    >
+                                        BUY
+                                    </button>
+                                    <button 
+                                        onClick={() => handleTrade('SELL')}
+                                        className="py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-500 transition duration-200 shadow-lg shadow-rose-600/20"
+                                    >
+                                        SELL
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Holdings & Transaction Logs */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Portfolio Holdings Table (2 Cols) */}
+                        <div className="glass-panel rounded-2xl p-6 lg:col-span-2 border-t border-slate-800">
+                            <h2 className="text-lg font-bold text-indigo-300 mb-6 pb-2 border-b border-slate-800">Portfolio Holdings</h2>
+                            {portfolio.holdings.length === 0 ? (
+                                <div className="text-center py-10 text-slate-500 font-medium">No assets held. Perform a buy transaction to start.</div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="text-slate-400 font-semibold text-xs border-b border-slate-800/80 uppercase tracking-wider">
+                                                <th className="py-3 px-4">Asset</th>
+                                                <th className="py-3 px-4 text-center">Shares Owned</th>
+                                                <th className="py-3 px-4 text-center">Avg Cost</th>
+                                                <th className="py-3 px-4 text-center">Current price</th>
+                                                <th className="py-3 px-4 text-right">Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {portfolio.holdings.map((h) => {
+                                                const currentPrice = stocks.find(s => s.symbol === h.symbol)?.price || h.averageCost;
+                                                return (
+                                                    <tr key={h.symbol} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+                                                        <td className="py-3.5 px-4 font-bold text-slate-200">{h.symbol}</td>
+                                                        <td className="py-3.5 px-4 text-center font-bold text-indigo-400">{h.sharesOwned}</td>
+                                                        <td className="py-3.5 px-4 text-center text-slate-400">${h.averageCost.toFixed(2)}</td>
+                                                        <td className="py-3.5 px-4 text-center text-slate-400">${currentPrice.toFixed(2)}</td>
+                                                        <td className="py-3.5 px-4 text-right font-extrabold text-indigo-300">${(currentPrice * h.sharesOwned).toFixed(2)}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Transaction History Log (1 Col) */}
+                        <div className="glass-panel rounded-2xl p-6 border-t border-slate-800">
+                            <h2 className="text-lg font-bold text-indigo-300 mb-6 pb-2 border-b border-slate-800">Transaction Logs</h2>
+                            {transactions.length === 0 ? (
+                                <div className="text-slate-500 py-10 text-center text-sm font-medium">No transactions recorded.</div>
+                            ) : (
+                                <div className="max-h-[300px] overflow-y-auto space-y-2.5 pr-2">
+                                    {transactions.slice().reverse().map((t) => (
+                                        <div key={t.id} className="flex justify-between items-center bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 text-xs">
+                                            <div>
+                                                <span className={`font-bold mr-2 ${t.type === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                    {t.type}
+                                                </span>
+                                                <span className="font-semibold text-slate-200">{t.quantity} {t.symbol}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-extrabold text-slate-300">${t.price.toFixed(2)}</div>
+                                                <div className="text-[9px] text-slate-500">{new Date(t.timestamp).toLocaleTimeString()}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
